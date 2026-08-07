@@ -164,35 +164,55 @@ Wireshark 4.x 有 4 类 Lua 插件目录（`tshark -G folders` 可查询实际�
 |------|------|
 | 启动 Wireshark | 自动加载插件目录中的所有 `.lua` |
 | Ctrl+Shift+L | 运行中修改代码后重载（开发时最常用） |
-| 命令行 `-X lua_script:xx.lua` | 临时加载指定脚本，不放进插件目录（Windows 路径用正斜杠，如 `-X lua_script:C:/plugins/xx.lua`） |
+| 命令行 `-X lua_script:xx.lua` | 临时加载**不与现有插件冲突**的脚本（Windows 路径用正斜杠）；勿加载插件目录已有的同名协议，会报「there cannot be two protocols」 |
 
 ### 5.3 调试方法（无需打开 Wireshark）
 
 tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印。以下命令均在本机 Wireshark 4.6.7 实测通过。
 
-> **注意：`tshark` 默认不在 PATH 中，手动执行需带完整路径** `C:\Program Files\Wireshark\tshark.exe`（或先加进 PATH）。下面命令用 `tshark` 简写，实际执行时请替换为完整路径。
+> **注意：`tshark` 默认不在 PATH 中，且安装路径含空格，必须带完整路径执行。**
+>
+> - **PowerShell**：`& "C:\Program Files\Wireshark\tshark.exe"`（引号包路径 + 调用运算符 `&`，缺一不可）
+> - **CMD**：`"C:\Program Files\Wireshark\tshark.exe"`（引号包路径）
+>
+> 下面命令用 `tshark` 简写，实际执行时替换为上面的完整调用。错误示范（PowerShell 下会报 `无法将"C:\Program"项识别为...`）：`C:\Program Files\Wireshark\tshark.exe`——路径含空格必须用引号。
 
-```bash
+以下命令在 **PowerShell** 下实测通过（`$ts` 为 tshark 完整路径变量，先定义一次即可）：
+
+```powershell
+# 定义 tshark 完整路径变量（PowerShell，路径是字符串，调用时用 &）
+$ts = "C:\Program Files\Wireshark\tshark.exe"
+
 # 查询插件目录（输出 Personal/Global Lua Plugins 等 8 类路径）
-tshark -G folders
+& $ts -G folders
 
 # 语法/加载检查：能列出字段即加载成功（本插件输出 68 行 cql15.*）
-tshark -G fields -q 2>&1 | grep "^F.*cql15\."
+& $ts -G fields -q | Select-String "^F.*cql15\."
 
 # 抓包文件实测解析（-V 输出字段树，-Y 过滤）
-tshark -r test.pcap -V -Y cql15
+& $ts -r test.pcap -V -Y cql15
 
 # 查看 expert info（告警/错误）。注意：无 expert 告警时输出为空，属正常
-tshark -r test.pcap -q -z expert
+& $ts -r test.pcap -q -z expert
 ```
 
-命令行临时加载脚本（不放进插件目录）：
+> 不用变量的话，每条命令直接写 `& "C:\Program Files\Wireshark\tshark.exe" ...` 即可。
 
-```bash
-# 正常加载：能列出字段即成功（-X 后紧跟脚本路径）
-tshark -G fields -q -X lua_script:C:/path/to/xx.lua
-# 脚本不存在时会明确报错：The file "...lua" doesn't exist.
+命令行临时加载脚本：
+
+```powershell
+# -X lua_script 加载临时脚本（Windows 路径用正斜杠）
+& "C:\Program Files\Wireshark\tshark.exe" -G fields -q -X lua_script:C:/path/to/xx.lua
+# 脚本不存在时报错：The file "...lua" doesn't exist.
 ```
+
+> **注意 `-X` 的坑**：`-X lua_script` 只适用于「不在插件目录、且不与已有协议重名」的脚本。tshark 启动时插件目录已自动加载本插件，若再用 `-X` 加载它（或任何 `Proto` 描述相同的副本）会报错：
+>
+> ```
+> Lua: Error during loading: ...: there cannot be two protocols with the same description
+> ```
+>
+> 想用 `-X` 调试本插件的副本，需先改脚本里的 `Proto` 名称（如 CQL15→ZZTEST）。实测改名后 `-X` 加载正常。
 
 脚本内可用 `print()` 输出到标准错误，或用 `error("msg")` 主动报错定位。
 
