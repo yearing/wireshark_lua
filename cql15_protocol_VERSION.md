@@ -168,7 +168,9 @@ Wireshark 4.x 有 4 类 Lua 插件目录（`tshark -G folders` 可查询实际�
 
 ### 5.3 调试方法（无需打开 Wireshark）
 
-tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印。以下命令均在本机 Wireshark 4.6.7 实测通过：
+tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印。以下命令均在本机 Wireshark 4.6.7 实测通过。
+
+> **注意：`tshark` 默认不在 PATH 中，手动执行需带完整路径** `C:\Program Files\Wireshark\tshark.exe`（或先加进 PATH）。下面命令用 `tshark` 简写，实际执行时请替换为完整路径。
 
 ```bash
 # 查询插件目录（输出 Personal/Global Lua Plugins 等 8 类路径）
