@@ -136,6 +136,75 @@ CQL15 Protocol Data, Len: 56
 
 ## 四、环境
 
-- Wireshark 4.x（Lua 5.2+）
+- Wireshark 4.6.7（内置 Lua 5.4）
 - 文件名：`cql15_protocol.lua`
 - 依赖：仅 Wireshark 内置 Lua 引擎，无第三方库
+
+---
+
+## 五、附录：Wireshark Lua 插件开发指南
+
+### 5.1 插件目录
+
+Wireshark 4.x 有 4 类 Lua 插件目录（`tshark -G folders` 可查询实际路径）：
+
+| 类型 | 路径（Windows） | 生效范围 |
+|------|----------------|----------|
+| 个人 Lua 插件 | `%APPDATA%\Wireshark\plugins\` | 仅当前用户，所有版本加载 |
+| 全局 Lua 插件 | `C:\Program Files\Wireshark\plugins\` | 所有用户，所有版本加载 |
+| 个人版本目录 | `%APPDATA%\Wireshark\plugins\4.6\` | 仅 Wireshark 4.6 加载，版本隔离 |
+| 全局版本目录 | `C:\Program Files\Wireshark\plugins\4.6\` | 所有用户 + 版本隔离 |
+
+- 根 `plugins\` 目录的 `.lua` 被所有版本加载；带版本号的子目录（如 `4.6\`）仅对应版本加载，升级大版本时不会加载旧目录，避免兼容性问题
+- 文件后缀必须为 `.lua`
+
+### 5.2 加载与重载
+
+| 方式 | 场景 |
+|------|------|
+| 启动 Wireshark | 自动加载插件目录中的所有 `.lua` |
+| Ctrl+Shift+L | 运行中修改代码后重载（开发时最常用） |
+| 命令行 `-X lua_script:xx.lua` | 临时加载指定脚本，不放进插件目录 |
+
+### 5.3 调试方法（无需打开 Wireshark）
+
+tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印：
+
+```bash
+# 语法/加载检查：能列出字段即加载成功
+tshark -G fields -q 2>&1 | grep "^F.*cql15\."
+
+# 抓包文件实测解析
+tshark -r test.pcap -V -Y cql15
+
+# 查看 expert info（告警/错误）
+tshark -r test.pcap -q -z expert
+```
+
+脚本内可用 `print()` 输出到标准错误，或用 `error("msg")` 主动报错定位。
+
+### 5.4 常用 Lua API
+
+| API | 作用 | 本插件用法 |
+|-----|------|-----------|
+| `Proto("name","desc")` | 定义协议解析器 | `cq15_protocol = Proto(...)` |
+| `ProtoField.string/uint8/uint16/bytes` | 定义可过滤字段 | `sf()`、`ProtoField.bytes("send_time")` |
+| `proto.fields = {...}` | 注册字段到协议 | 68 个 `cql15.*` 字段 |
+| `proto.dissector(buffer,pinfo,tree)` | 解析入口 | 拆包 → 逐条解析 |
+| `proto.prefs` / `Pref.string` | 用户可配置首选项 | `my_tcp_port` |
+| `DissectorTable.get("tcp.port"):add(port,proto)` | 按端口绑定解析器 | 5000 端口 |
+| `buffer(off,len):string()/uint()/raw()` | 读取 TvbRange 值 | 读取字段值 |
+| `pinfo.desegment_offset/len` | TCP 分包重组 | 处理跨段消息 |
+| `tree:add(field, range)` | 在树中添加字段 | 显示字段树 |
+| `set_text()` | 改显示文本但不影响过滤值 | 加 `[filter]`/中文枚举 |
+| `pinfo.cols.info/protocol` | 设置 Info/Protocol 列 | 方向标注 |
+
+### 5.5 常见坑
+
+1. **FT_STRING 遇内嵌 `0x00` 截断** → 触发 `Trailing stray characters`。含 NUL 的字段用 `ProtoField.bytes`（本插件已修复）
+2. **字段过滤名 = ProtoField 的名字参数**，非标签文本；同名过滤器跨协议冲突，用 `cql15.*` 前缀避免
+3. **desegment 需同时设置 `desegment_offset` 和 `desegment_len`**，缺一不可
+4. **prefs_changed() 回调**：用户改首选项时重新绑定，否则旧端口残留
+5. **长度域不可靠时别依赖它定位**，以结构解析结果为准（08/09 的教训）
+6. **Lua 全局变量泄漏**：用 `local` 声明，避免重载后污染
+7. **Lua 版本**：Wireshark 4.2+ 内置 Lua 5.4，按 5.4 语法编写
