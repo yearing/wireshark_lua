@@ -526,7 +526,7 @@ local function full_packet_dissactor(buffer, pinfo, tree)
         local tname = (type_str == "19")
             and (is_sig and "段场出入库信息" or "FAS火灾信息")
             or (dataTypeStr[type_str] or type_str)
-        pinfo.cols.info = "CQL15 " .. dir .. " " .. tname ..
+        pinfo.cols.info = dir .. " " .. tname ..
             " seq=" .. buffer(b_offset + 1, 2):string()
 
         dissect_message(buffer, b_offset, total_len, subtree, is_sig)
