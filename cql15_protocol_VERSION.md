@@ -164,21 +164,32 @@ Wireshark 4.x 有 4 类 Lua 插件目录（`tshark -G folders` 可查询实际�
 |------|------|
 | 启动 Wireshark | 自动加载插件目录中的所有 `.lua` |
 | Ctrl+Shift+L | 运行中修改代码后重载（开发时最常用） |
-| 命令行 `-X lua_script:xx.lua` | 临时加载指定脚本，不放进插件目录 |
+| 命令行 `-X lua_script:xx.lua` | 临时加载指定脚本，不放进插件目录（Windows 路径用正斜杠，如 `-X lua_script:C:/plugins/xx.lua`） |
 
 ### 5.3 调试方法（无需打开 Wireshark）
 
-tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印：
+tshark 与 Wireshark 共用同一 Lua 引擎和插件目录，脚本语法错误会在启动时打印。以下命令均在本机 Wireshark 4.6.7 实测通过：
 
 ```bash
-# 语法/加载检查：能列出字段即加载成功
+# 查询插件目录（输出 Personal/Global Lua Plugins 等 8 类路径）
+tshark -G folders
+
+# 语法/加载检查：能列出字段即加载成功（本插件输出 68 行 cql15.*）
 tshark -G fields -q 2>&1 | grep "^F.*cql15\."
 
-# 抓包文件实测解析
+# 抓包文件实测解析（-V 输出字段树，-Y 过滤）
 tshark -r test.pcap -V -Y cql15
 
-# 查看 expert info（告警/错误）
+# 查看 expert info（告警/错误）。注意：无 expert 告警时输出为空，属正常
 tshark -r test.pcap -q -z expert
+```
+
+命令行临时加载脚本（不放进插件目录）：
+
+```bash
+# 正常加载：能列出字段即成功（-X 后紧跟脚本路径）
+tshark -G fields -q -X lua_script:C:/path/to/xx.lua
+# 脚本不存在时会明确报错：The file "...lua" doesn't exist.
 ```
 
 脚本内可用 `print()` 输出到标准错误，或用 `error("msg")` 主动报错定位。
