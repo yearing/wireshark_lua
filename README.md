@@ -59,6 +59,24 @@
 
 - [Wireshark Lua 插件开发教程](WIRESHARK_LUA_TUTORIAL.md) — 从入门到实战的完整开发指南，涵盖协议定义、字段注册、枚举解读、分包重组等内容
 
+## 统计分析插件
+
+| 插件 | 协议 | 功能 | 文件 |
+|------|------|------|------|
+| CQL15 统计 | CQL15 | 报文总数/双向分布/类型分布/序号异常/心跳间隔/会话时长 | [cql15_stats.lua](cql15_stats.lua) |
+
+**使用方法：**
+1. 将 `cql15_stats.lua` 复制到 Wireshark 插件目录
+2. 重启 Wireshark
+3. 菜单栏 **工具 → CQL15 统计分析** 打开统计面板
+
+**统计面板内容：**
+- 报文总数 / SIG→ISCS / ISCS→SIG 双向分布
+- 消息类型分布（计数 + 占比）
+- 心跳间隔统计（平均/最大/最小）
+- 序号异常检测（重号/断号）
+- 会话时长与报文速率
+
 ## 功能特性
 
 - 解析轨道交通信号系统应用层二进制报文
@@ -73,6 +91,7 @@
 ```
 ├── cql15_protocol.lua           # CQL15协议解析
 ├── cql15_protocol_VERSION.md    # CQL15版本说明
+├── cql15_stats.lua              # CQL15统计分析插件
 ├── dgl1_protocol.lua            # DGL1协议解析
 ├── dgl1_protocol_VERSION.md     # DGL1版本说明
 ├── fsl2_tcms_protocol.lua       # FSL2 TCMS协议解析
