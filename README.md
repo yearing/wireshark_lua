@@ -55,6 +55,10 @@
 - [FSL2-TCMS 版本说明](fsl2_tcms_protocol_VERSION.md)
 - [GZL1822/1012 版本说明](gzl1822_1012_ats_protocol_VERSION.md)
 
+## Wireshark Lua 开发教程
+
+- [Wireshark Lua 插件开发教程](WIRESHARK_LUA_TUTORIAL.md) — 从入门到实战的完整开发指南，涵盖协议定义、字段注册、枚举解读、分包重组等内容
+
 ## 功能特性
 
 - 解析轨道交通信号系统应用层二进制报文
